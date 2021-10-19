@@ -1,3 +1,5 @@
 #!/bin/bash
 
-docker build -t ds398:2.0-alpine .
+BUILD_VERSION=$1
+echo "BUILD_VERSION=$BUILD_VERSION"
+docker build --build-arg BUILD_VERSION="$BUILD_VERSION" -t "389ds:$BUILD_VERSION-alpine" .

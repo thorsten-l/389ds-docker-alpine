@@ -1,4 +1,5 @@
 FROM alpine:3 as builder
+ARG BUILD_VERSION
 
 RUN apk add build-base wget libtool autoconf automake openssl-dev cracklib-dev \
             libevent-dev nspr-dev nss-dev openldap-dev db-dev icu-dev \
@@ -12,9 +13,9 @@ RUN pip install python-dateutil
 
 RUN mkdir /build
 WORKDIR /build
-RUN wget https://github.com/389ds/389-ds-base/archive/refs/tags/389-ds-base-2.0.10.tar.gz
-RUN tar xvfz 389-ds-base-2.0.10.tar.gz
-WORKDIR /build/389-ds-base-389-ds-base-2.0.10
+RUN wget "https://github.com/389ds/389-ds-base/archive/refs/tags/389-ds-base-$BUILD_VERSION.tar.gz"
+RUN tar xvfz "389-ds-base-$BUILD_VERSION.tar.gz"
+WORKDIR "/build/389-ds-base-389-ds-base-$BUILD_VERSION"
 
 RUN ./autogen.sh
 RUN ./configure --with-openldap
@@ -38,8 +39,8 @@ COPY --from=builder /opt /opt
 COPY --from=builder /usr/lib/python3.9 /usr/lib/python3.9
 COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
 
-RUN mkdir -p /data /opt/dirsrv/var/run/dirsrv
-RUN ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca 
+RUN mkdir -p /data /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca 
 
 HEALTHCHECK --start-period=5m --timeout=5s --interval=5s --retries=2 \
     CMD /usr/libexec/dirsrv/dscontainer -H
