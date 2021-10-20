@@ -39,8 +39,9 @@ COPY --from=builder /opt /opt
 COPY --from=builder /usr/lib/python3.9 /usr/lib/python3.9
 COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
 
-RUN mkdir -p /data /opt/dirsrv/var/run/dirsrv; \
-    ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca 
+RUN mkdir -p /data /data/config /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca; \
+    ln -s /data/config /opt/dirsrv/etc/dirsrv/slapd-localhost 
 
 HEALTHCHECK --start-period=5m --timeout=5s --interval=5s --retries=2 \
     CMD /usr/libexec/dirsrv/dscontainer -H
