@@ -1,0 +1,55 @@
+FROM fedora:32 as builder
+ARG BUILD_VERSION
+
+RUN dnf upgrade -y
+RUN dnf install -y gcc g++ binutils wget libtool \
+    autoconf automake make rsync cracklib-devel pam-devel \
+    libevent-devel openldap-devel nspr-devel nss-devel libdb-devel \
+    libicu-devel nss-util-devel net-snmp-devel krb5-devel pcre-devel \
+    python3 python3-devel nss-tools
+
+RUN mkdir /build
+WORKDIR /build
+RUN wget "https://github.com/389ds/389-ds-base/archive/refs/tags/389-ds-base-$BUILD_VERSION.tar.gz"
+RUN tar xvfz "389-ds-base-$BUILD_VERSION.tar.gz"
+WORKDIR "/build/389-ds-base-389-ds-base-$BUILD_VERSION"
+
+RUN pip install python-ldap && ./autogen.sh && ./configure --with-openldap
+
+RUN sed -e 's/.*build_manpages.*/\tcd \$\(srcdir\)\/src\/lib389\; \$\(PYTHON\) setup.py build/g' Makefile > M
+RUN mv M Makefile
+
+COPY setup.py src/lib389/setup.py
+
+RUN make -j 8 && make lib389 -j 8 && make install && make lib389-install
+
+WORKDIR /
+RUN rm -fr /build
+
+FROM fedora:32 as production
+
+RUN dnf upgrade -y 
+RUN dnf install -y binutils cracklib pam libevent openldap nspr nss libdb \
+    libicu nss-util net-snmp krb5-libs pcre python3 python3-lib389 nss-tools && dnf clean all
+
+COPY --from=builder /opt /opt
+COPY --from=builder /usr/sbin/ds* /usr/sbin
+COPY --from=builder /usr/local/lib/python3.8 /usr/local/lib/python3.8
+COPY --from=builder /usr/lib/python* /usr/lib
+COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
+
+RUN mkdir -p /data /data/config /data/run /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/run /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca; \
+    ln -s /data/config /opt/dirsrv/etc/dirsrv/slapd-localhost 
+
+HEALTHCHECK --start-period=5m --timeout=5s --interval=5s --retries=2 \
+    CMD /usr/libexec/dirsrv/dscontainer -H
+
+WORKDIR /data
+VOLUME /data
+
+EXPOSE 3389 3636
+
+CMD [ "/usr/libexec/dirsrv/dscontainer", "-r" ]
+# CMD [ "/bin/bash" ]

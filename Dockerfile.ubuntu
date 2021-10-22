@@ -1,0 +1,63 @@
+FROM ubuntu:20.04 as builder
+ARG BUILD_VERSION
+
+RUN apt update -y && apt upgrade -y && apt install -y tzdata
+
+RUN apt install -y pkg-config build-essential wget libtool autoconf automake \
+                   openssl libnspr4 libnspr4-dev libdb5.3++ libdb5.3++-dev libnss3 \
+                   libnss3-dev libcrack2 libcrack2-dev libsnmp-base libsnmp-dev libkrb5-dev \
+                   python3 python3-dev python3-pip git libpam0g libpam0g-dev libldap-common \
+                   libldap2-dev libsasl2-dev libldap2-dev libssl-dev libtool libtool-bin make \
+                   rsync libnss3 libnss3-dev libevent-2.1-7 libevent-core-2.1-7 libevent-dev \
+                   libicu-dev libpcre3-dev libnss3-tools
+
+RUN pip install setuptools && pip install argcomplete && pip install python-ldap && pip install python-dateutil
+
+RUN mkdir /build
+WORKDIR /build
+RUN wget "https://github.com/389ds/389-ds-base/archive/refs/tags/389-ds-base-$BUILD_VERSION.tar.gz"
+RUN tar xvfz "389-ds-base-$BUILD_VERSION.tar.gz"
+WORKDIR "/build/389-ds-base-389-ds-base-$BUILD_VERSION"
+
+RUN ./autogen.sh
+RUN ./configure --with-openldap
+
+RUN sed -e 's/.*build_manpages.*/\tcd \$\(srcdir\)\/src\/lib389\; \$\(PYTHON\) setup.py build/g' Makefile > M
+RUN mv M Makefile
+
+COPY setup.py src/lib389/setup.py
+
+RUN make && make lib389 && make install && make lib389-install
+
+WORKDIR /
+RUN rm -fr /build
+
+FROM ubuntu:20.04 as production
+
+RUN apt update -y && apt upgrade -y && apt install -y tzdata
+
+RUN apt install -y pkg-config openssl libnspr4 libdb5.3++ libnss3 libcrack2 libsnmp-base libkrb5-3 \
+    python3 python3-pip libpam0g libldap-common libsasl2-2 libldap-2.4-2 libssl1.1 \
+    libevent-2.1-7 libevent-core-2.1-7 libicu66 libpcre3 libnss3-tools
+
+COPY --from=builder /opt /opt
+COPY --from=builder /usr/sbin/ds* /usr/sbin
+COPY --from=builder /usr/local/lib/python3.8 /usr/local/lib/python3.8
+COPY --from=builder /usr/lib/python* /usr/lib
+COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
+
+RUN mkdir -p /data /data/config /data/run /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/run /opt/dirsrv/var/run/dirsrv; \
+    ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca; \
+    ln -s /data/config /opt/dirsrv/etc/dirsrv/slapd-localhost
+
+HEALTHCHECK --start-period=5m --timeout=5s --interval=5s --retries=2 \
+    CMD /usr/libexec/dirsrv/dscontainer -H
+
+WORKDIR /data
+VOLUME /data
+
+EXPOSE 3389 3636
+
+CMD [ "/usr/libexec/dirsrv/dscontainer", "-r" ]
+# CMD [ "/bin/bash" ]
