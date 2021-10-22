@@ -27,7 +27,7 @@ RUN mv M Makefile
 
 COPY setup.py src/lib389/setup.py
 
-RUN make && make lib389 && make install && make lib389-install
+RUN make -j 8 && make -j 8 lib389 && make install && make lib389-install
 
 WORKDIR /
 RUN rm -fr /build
