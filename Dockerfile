@@ -29,7 +29,7 @@ RUN apk add openssl cracklib libevent nspr nss openldap db icu \
             net-snmp krb5 pcre nss-tools openssl linux-pam python3
 
 COPY --from=builder /opt /opt
-COPY --from=builder /usr/sbin/ds* /usr/sbin
+COPY --from=builder /usr/sbin/ds* /usr/sbin/
 COPY --from=builder /usr/lib/python3.9 /usr/lib/python3.9
 COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
 
