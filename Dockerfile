@@ -4,12 +4,9 @@ ARG BUILD_VERSION
 RUN apk add build-base wget libtool autoconf automake openssl-dev cracklib-dev \
             libevent-dev nspr-dev nss-dev openldap-dev db-dev icu-dev \
             net-snmp-dev krb5-dev pcre-dev make rsync nss-tools openssl \
-            linux-pam-dev python3 py3-pip python3-dev git
+            linux-pam-dev python3 py3-pip python3-dev git rust cargo
 
-RUN pip install setuptools
-RUN pip install argcomplete
-RUN pip install python-ldap
-RUN pip install python-dateutil
+RUN pip install setuptools argcomplete python-ldap python-dateutil
 
 RUN mkdir /build
 WORKDIR /build
@@ -17,18 +14,14 @@ RUN wget "https://github.com/389ds/389-ds-base/archive/refs/tags/389-ds-base-$BU
 RUN tar xvfz "389-ds-base-$BUILD_VERSION.tar.gz"
 WORKDIR "/build/389-ds-base-389-ds-base-$BUILD_VERSION"
 
-RUN ./autogen.sh
-RUN ./configure --with-openldap
-RUN make
+RUN ./autogen.sh && ./configure --with-openldap --enable-rust
 
 RUN sed -e 's/.*build_manpages.*/\tcd \$\(srcdir\)\/src\/lib389\; \$\(PYTHON\) setup.py build/g' Makefile > M
 RUN mv M Makefile
 
 COPY setup.py src/lib389/setup.py
 
-RUN make lib389
-RUN make install
-RUN make lib389-install
+RUN make -j 8 && make lib389 -j 8 && make install && make lib389-install
 
 FROM alpine:3 
 

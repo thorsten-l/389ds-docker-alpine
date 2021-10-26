@@ -9,7 +9,7 @@ RUN apt install -y pkg-config build-essential wget libtool autoconf automake \
                    python3 python3-dev python3-pip git libpam0g libpam0g-dev libldap-common \
                    libldap2-dev libsasl2-dev libldap2-dev libssl-dev libtool libtool-bin make \
                    rsync libnss3 libnss3-dev libevent-2.1-7 libevent-core-2.1-7 libevent-dev \
-                   libicu-dev libpcre3-dev libnss3-tools
+                   libicu-dev libpcre3-dev libnss3-tools rustc cargo
 
 RUN pip install setuptools && pip install argcomplete && pip install python-ldap && pip install python-dateutil
 
@@ -20,7 +20,7 @@ RUN tar xvfz "389-ds-base-$BUILD_VERSION.tar.gz"
 WORKDIR "/build/389-ds-base-389-ds-base-$BUILD_VERSION"
 
 RUN ./autogen.sh
-RUN ./configure --with-openldap
+RUN ./configure --with-openldap --enable-rust
 
 RUN sed -e 's/.*build_manpages.*/\tcd \$\(srcdir\)\/src\/lib389\; \$\(PYTHON\) setup.py build/g' Makefile > M
 RUN mv M Makefile
@@ -60,4 +60,3 @@ VOLUME /data
 EXPOSE 3389 3636
 
 CMD [ "/usr/libexec/dirsrv/dscontainer", "-r" ]
-# CMD [ "/bin/bash" ]
