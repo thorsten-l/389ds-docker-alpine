@@ -31,9 +31,9 @@ RUN dnf install -y binutils cracklib pam libevent openldap nspr nss libdb \
     libicu nss-util net-snmp krb5-libs pcre python3 python3-lib389 nss-tools && dnf clean all
 
 COPY --from=builder /opt /opt
-COPY --from=builder /usr/sbin/ds* /usr/sbin
+COPY --from=builder /usr/sbin/ds* /usr/sbin/
 COPY --from=builder /usr/local/lib/python3.8 /usr/local/lib/python3.8
-COPY --from=builder /usr/lib/python* /usr/lib
+COPY --from=builder /usr/lib/python* /usr/lib/
 COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
 
 RUN mkdir -p /data /data/config /data/run /opt/dirsrv/var/run/dirsrv; \
