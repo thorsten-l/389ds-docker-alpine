@@ -1,11 +1,11 @@
-FROM alpine:3 as builder
+FROM alpine:3.16.2 as builder
 
 ARG BUILD_VERSION
 
 RUN apk add build-base wget libtool autoconf automake openssl-dev cracklib-dev \
             libevent-dev nspr-dev nss-dev openldap-dev db-dev icu-dev \
             net-snmp-dev krb5-dev pcre-dev make rsync nss-tools openssl \
-            linux-pam-dev python3 py3-pip python3-dev git rust cargo 
+            linux-pam-dev python3 py3-pip python3-dev git rust cargo lmdb-dev json-c-dev
 
 RUN pip install setuptools argcomplete python-ldap python-dateutil
 
@@ -24,20 +24,24 @@ COPY setup.py src/lib389/setup.py
 
 RUN make -j 8 && make lib389 -j 8 && make install && make lib389-install
 
-FROM alpine:3 
+FROM alpine:3.16.2
 
 RUN apk add openssl cracklib libevent nspr nss openldap db icu \
-            net-snmp krb5 pcre nss-tools openssl linux-pam python3
+            net-snmp krb5 pcre nss-tools openssl linux-pam lmdb json-c python3
 
 COPY --from=builder /opt /opt
 COPY --from=builder /usr/sbin/ds* /usr/sbin/
 COPY --from=builder /usr/lib/python3.9 /usr/lib/python3.9
 COPY --from=builder /usr/libexec/dirsrv /usr/libexec/dirsrv
 
+COPY systemd-detect-virt /usr/bin
+
+
 RUN mkdir -p /data /data/config /data/run /opt/dirsrv/var/run/dirsrv; \
     ln -s /data/run /opt/dirsrv/var/run/dirsrv; \
     ln -s /data/ssca /opt/dirsrv/etc/dirsrv/ssca; \
-    ln -s /data/config /opt/dirsrv/etc/dirsrv/slapd-localhost 
+    ln -s /data/config /opt/dirsrv/etc/dirsrv/slapd-localhost && \
+    chmod 0755 /usr/bin/systemd-detect-virt
 
 HEALTHCHECK --start-period=5m --timeout=5s --interval=5s --retries=2 \
     CMD /usr/libexec/dirsrv/dscontainer -H
